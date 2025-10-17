@@ -8,8 +8,7 @@ const clothingItemRouter = require("./clothingItem");
 router.use("/items", clothingItemRouter);
 router.use("/users", userRouter);
 
-// 404 handler (Express 5)
-router.all("*", (req, res) => {
+router.use((req, res, next) => {
   res.status(404).json({ message: "Requested resource not found" });
 });
 

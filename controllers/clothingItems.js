@@ -19,7 +19,7 @@ const createItem = (req, res) => {
       .send({ message: "owner is required (will come from auth later)" });
   }
 
-  ClothingItem.create({ name, weather, imageUrl, owner })
+  ClothingItem.create({ name, weather, imageUrl, owner: ownerId })
     .then((item) => item.populate(["owner", "likes"]))
     .then((item) => res.status(201).send(item))
     .catch((err) => {

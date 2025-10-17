@@ -30,7 +30,7 @@ const clothingItemSchema = new mongoose.Schema({
     required: true,
   },
   likes: {
-    type: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    type: [{ type: Schema.Types.ObjectId, ref: "user" }],
     default: [],
   },
   createdAt: {
