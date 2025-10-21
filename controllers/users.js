@@ -1,42 +1,132 @@
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { JWT_SECRET } = require("../utils/config");
+const {
+  BAD_REQUEST,
+  UNAUTHORIZED,
+  NOT_FOUND,
+  CONFLICT,
+  INTERNAL_SERVER_ERROR,
+  INTERNAL_SERVER_MESSAGE,
+} = require("../utils/errors");
+
+const SALT_ROUNDS = 10;
 
 const getUsers = (req, res) => {
   User.find({})
     .then((users) => res.status(200).send(users))
     .catch((err) => {
       console.error(err);
-      return res.status(500).send({ message: err.message });
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: INTERNAL_SERVER_MESSAGE });
     });
 };
 
 const createUser = (req, res) => {
-  const { name, avatar } = req.body;
+  const { name, avatar, email, password } = req.body;
 
-  User.create({ name, avatar })
-    .then((user) => res.status(201).send(user))
+  bcrypt
+    .hash(password, SALT_ROUNDS)
+    .then((hash) =>
+      User.create({
+        name,
+        avatar,
+        email,
+        password: hash,
+      })
+    )
+    .then((user) => {
+      const userObj = user.toObject();
+      delete userObj.password; // hide hash on create
+      return res.status(201).send(userObj);
+    })
     .catch((err) => {
       console.error(err);
-      if (err.name === "ValidationError") {
-        return res.status(400).send({ message: err.message });
+
+      if (err.code === 11000) {
+        return res
+          .status(CONFLICT)
+          .send({ message: "User with this email already exists" });
       }
-      return res.status(500).send({ message: err.message });
+      if (err.name === "ValidationError") {
+        return res.status(BAD_REQUEST).send({ message: err.message });
+      }
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: INTERNAL_SERVER_MESSAGE });
     });
 };
 
-const getUser = (req, res) => {
-  const { userId } = req.params;
+// STEP 7 previously: current user (kept as-is, with error constants)
+const getCurrentUser = (req, res) => {
+  const userId = req.user && req.user._id;
+
   User.findById(userId)
     .orFail()
     .then((user) => res.status(200).send(user))
     .catch((err) => {
       console.error(err);
       if (err.name === "DocumentNotFoundError") {
-        return res.status(404).send({ message: err.message });
+        return res.status(NOT_FOUND).send({ message: "User not found" });
       } else if (err.name === "CastError") {
-        return res.status(400).send({ message: "Invalid user id" });
+        return res.status(BAD_REQUEST).send({ message: "Invalid user id" });
       }
-      return res.status(500).send({ message: err.message });
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: INTERNAL_SERVER_MESSAGE });
     });
 };
 
-module.exports = { getUsers, createUser, getUser };
+// STEP 8 previously: update profile (name, avatar)
+const updateCurrentUser = (req, res) => {
+  const userId = req.user && req.user._id;
+  const { name, avatar } = req.body;
+
+  User.findByIdAndUpdate(
+    userId,
+    { name, avatar },
+    { new: true, runValidators: true }
+  )
+    .orFail()
+    .then((user) => res.status(200).send(user))
+    .catch((err) => {
+      console.error(err);
+      if (err.name === "DocumentNotFoundError") {
+        return res.status(NOT_FOUND).send({ message: "User not found" });
+      }
+      if (err.name === "ValidationError") {
+        return res.status(BAD_REQUEST).send({ message: err.message });
+      }
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: INTERNAL_SERVER_MESSAGE });
+    });
+};
+
+const login = (req, res) => {
+  const { email, password } = req.body;
+
+  User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      return res.status(200).send({ token });
+    })
+    .catch((err) => {
+      console.error(err);
+      return res
+        .status(UNAUTHORIZED)
+        .send({ message: "Incorrect email or password" });
+    });
+};
+
+module.exports = {
+  getUsers,
+  createUser,
+  getCurrentUser,
+  updateCurrentUser,
+  login,
+};

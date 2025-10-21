@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors"); // <-- Step 11
 const { PORT = 3001 } = process.env;
+
 const app = express();
 
 mongoose
@@ -10,14 +12,8 @@ mongoose
   })
   .catch(console.error);
 
+app.use(cors()); // <-- Step 11: enable CORS
 app.use(express.json());
-
-app.use((req, res, next) => {
-  req.user = {
-    _id: "68e58a220bc8eb6450000f2c",
-  };
-  next();
-});
 
 const mainRouter = require("./routes/index");
 app.use("/", mainRouter);
