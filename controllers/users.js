@@ -59,7 +59,7 @@ const createUser = (req, res) => {
     });
 };
 
-// STEP 7 previously: current user (kept as-is, with error constants)
+// STEP 7: current user
 const getCurrentUser = (req, res) => {
   const userId = req.user && req.user._id;
 
@@ -79,7 +79,7 @@ const getCurrentUser = (req, res) => {
     });
 };
 
-// STEP 8 previously: update profile (name, avatar)
+// STEP 8: update profile
 const updateCurrentUser = (req, res) => {
   const userId = req.user && req.user._id;
   const { name, avatar } = req.body;
@@ -105,8 +105,16 @@ const updateCurrentUser = (req, res) => {
     });
 };
 
+// STEP 3: login with 400 guard
 const login = (req, res) => {
   const { email, password } = req.body;
+
+  // Guard for missing fields
+  if (!email || !password) {
+    return res
+      .status(BAD_REQUEST)
+      .send({ message: "Email and password are required" });
+  }
 
   User.findUserByCredentials(email, password)
     .then((user) => {
