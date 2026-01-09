@@ -7,9 +7,14 @@ const clothingItemRouter = require("./clothingItem");
 const userRouter = require("./users");
 const auth = require("../middlewares/auth");
 
+const {
+  validateLogin,
+  validateUserBody,
+} = require("../middlewares/validation");
+
 // Public
-router.post("/signin", login);
-router.post("/signup", createUser);
+router.post("/signin", validateLogin, login);
+router.post("/signup", validateUserBody, createUser);
 router.get("/items", getItems);
 
 // Protected

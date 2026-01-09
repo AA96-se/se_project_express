@@ -1,140 +1,92 @@
 const ClothingItem = require("../models/clothingItem");
-const {
-  BAD_REQUEST,
-  UNAUTHORIZED,
-  FORBIDDEN,
-  NOT_FOUND,
-  INTERNAL_SERVER_ERROR,
-  INTERNAL_SERVER_MESSAGE,
-} = require("../utils/errors");
 
-const getItems = (req, res) => {
+const BadRequestError = require("../errors/bad-request-err");
+const ForbiddenError = require("../errors/forbidden-err");
+const NotFoundError = require("../errors/not-found-err");
+const UnauthorizedError = require("../errors/unauthorized-err");
+
+const getItems = (req, res, next) => {
   ClothingItem.find({})
     .populate(["owner", "likes"])
-    .then((items) => res.status(200).send(items))
-    .catch((err) => {
-      console.error(err);
-      return res
-        .status(INTERNAL_SERVER_ERROR)
-        .send({ message: INTERNAL_SERVER_MESSAGE });
-    });
+    .then((items) => res.send(items))
+    .catch(next);
 };
 
-const createItem = (req, res) => {
-  const { name, weather, imageUrl, owner } = req.body;
-  const ownerId = owner || (req.user && req.user._id);
+const createItem = (req, res, next) => {
+  const { name, weather, imageUrl } = req.body;
 
-  if (!ownerId) {
-    return res
-      .status(BAD_REQUEST)
-      .send({ message: "owner is required (will come from auth later)" });
-  }
-
-  ClothingItem.create({ name, weather, imageUrl, owner: ownerId })
+  ClothingItem.create({
+    name,
+    weather,
+    imageUrl,
+    owner: req.user._id,
+  })
     .then((item) => item.populate(["owner", "likes"]))
     .then((item) => res.status(201).send(item))
     .catch((err) => {
-      console.error(err);
       if (err.name === "ValidationError") {
-        return res
-          .status(BAD_REQUEST)
-          .send({ message: "Invalid item data", details: err.errors });
+        return next(new BadRequestError("Invalid item data"));
       }
-      return res
-        .status(INTERNAL_SERVER_ERROR)
-        .send({ message: INTERNAL_SERVER_MESSAGE });
+      return next(err);
     });
 };
 
-// Only owner can delete (from Step 10)
-const deleteItem = (req, res) => {
-  const { itemId } = req.params;
-  const currentUserId = req.user && req.user._id;
-
-  ClothingItem.findById(itemId)
+const deleteItem = (req, res, next) => {
+  ClothingItem.findById(req.params.itemId)
     .orFail()
     .then((item) => {
-      if (item.owner.toString() !== currentUserId) {
-        return res
-          .status(FORBIDDEN)
-          .send({ message: "Forbidden: not the owner" });
+      if (item.owner.toString() !== req.user._id) {
+        throw new ForbiddenError("You are not allowed to delete this item");
       }
-      return item
-        .deleteOne()
-        .then(() =>
-          res
-            .status(200)
-            .send({ message: "Item deleted successfully", _id: item._id })
-        );
+      return item.deleteOne();
     })
+    .then(() => res.send({ message: "Item deleted successfully" }))
     .catch((err) => {
-      console.error(err);
       if (err.name === "DocumentNotFoundError") {
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
-      } else if (err.name === "CastError") {
-        return res.status(BAD_REQUEST).send({ message: "Invalid item id" });
+        return next(new NotFoundError("Item not found"));
       }
-      return res
-        .status(INTERNAL_SERVER_ERROR)
-        .send({ message: INTERNAL_SERVER_MESSAGE });
+      if (err.name === "CastError") {
+        return next(new BadRequestError("Invalid item id"));
+      }
+      return next(err);
     });
 };
 
-// PUT /items/:itemId/likes — like an item
-const likeItem = (req, res) => {
-  const userId = req.user && req.user._id;
-  if (!userId) {
-    return res
-      .status(UNAUTHORIZED)
-      .send({ message: "Authentication required" });
-  }
-
+const likeItem = (req, res, next) => {
   ClothingItem.findByIdAndUpdate(
     req.params.itemId,
-    { $addToSet: { likes: userId } },
-    { new: true, runValidators: true }
+    { $addToSet: { likes: req.user._id } },
+    { new: true }
   )
     .orFail()
-    .then((item) => res.status(200).send(item))
+    .then((item) => res.send(item))
     .catch((err) => {
-      console.error(err);
       if (err.name === "DocumentNotFoundError") {
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
-      } else if (err.name === "CastError") {
-        return res.status(BAD_REQUEST).send({ message: "Invalid item id" });
+        return next(new NotFoundError("Item not found"));
       }
-      return res
-        .status(INTERNAL_SERVER_ERROR)
-        .send({ message: INTERNAL_SERVER_MESSAGE });
+      if (err.name === "CastError") {
+        return next(new BadRequestError("Invalid item id"));
+      }
+      return next(err);
     });
 };
 
-// DELETE /items/:itemId/likes — unlike an item
-const dislikeItem = (req, res) => {
-  const userId = req.user && req.user._id;
-  if (!userId) {
-    return res
-      .status(UNAUTHORIZED)
-      .send({ message: "Authentication required" });
-  }
-
+const dislikeItem = (req, res, next) => {
   ClothingItem.findByIdAndUpdate(
     req.params.itemId,
-    { $pull: { likes: userId } },
-    { new: true, runValidators: true }
+    { $pull: { likes: req.user._id } },
+    { new: true }
   )
     .orFail()
-    .then((item) => res.status(200).send(item))
+    .then((item) => res.send(item))
     .catch((err) => {
-      console.error(err);
       if (err.name === "DocumentNotFoundError") {
-        return res.status(NOT_FOUND).send({ message: "Item not found" });
-      } else if (err.name === "CastError") {
-        return res.status(BAD_REQUEST).send({ message: "Invalid item id" });
+        return next(new NotFoundError("Item not found"));
       }
-      return res
-        .status(INTERNAL_SERVER_ERROR)
-        .send({ message: INTERNAL_SERVER_MESSAGE });
+      if (err.name === "CastError") {
+        return next(new BadRequestError("Invalid item id"));
+      }
+      return next(err);
     });
 };
 
