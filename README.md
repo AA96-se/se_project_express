@@ -4,10 +4,12 @@ An Express API for **What To Wear (WTWR)** with user **Sign Up / Log in**, JWT a
 
 ---
 
-## Frontend Links (paste yours)
+## Deployed Project
 
-- **Frontend Repo:** `PASTE_YOUR_FRONTEND_REPO_URL_HERE`
-- **Frontend App URL:** `PASTE_YOUR_FRONTEND_APP_URL_HERE`
+- **Frontend:** https://wtwr.jonward.com
+- **API:** https://api.wtwr.jonward.com
+- **Frontend Repo:** https://github.com/AA96-se/se_project_react
+- **Project Pitch Video:** PASTE_YOUR_PITCH_VIDEO_LINK_HERE
 
 ---
 

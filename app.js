@@ -24,6 +24,15 @@ app.use(express.json());
 
 app.use(requestLogger);
 
+// crash test route (remove after review)
+app.get("/crash-test", (req, res) => {
+  setTimeout(() => {
+    throw new Error("Server will crash now");
+  }, 0);
+
+  res.status(200).send({ message: "Crash test initiated" });
+});
+
 const mainRouter = require("./routes/index");
 app.use("/", mainRouter);
 
