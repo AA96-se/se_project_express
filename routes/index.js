@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const { login, createUser } = require("../controllers/users");
-const { getItems } = require("../controllers/clothingItems");
 const clothingItemRouter = require("./clothingItem");
 const userRouter = require("./users");
 const auth = require("../middlewares/auth");
@@ -15,14 +14,15 @@ const {
 // Public
 router.post("/signin", validateLogin, login);
 router.post("/signup", validateUserBody, createUser);
-router.get("/items", getItems);
 
-// Protected
-router.use(auth);
+// Items: GET is public, others protected (handled inside clothingItemRouter)
 router.use("/items", clothingItemRouter);
+
+// Everything else protected
+router.use(auth);
 router.use("/users", userRouter);
 
-// Express 5 JSON 404 (final handler; no path)
+// 404
 router.use((req, res) => {
   res.status(404).json({ message: "Requested resource not found" });
 });
