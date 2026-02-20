@@ -15,7 +15,9 @@ const {
 router.post("/signin", validateLogin, login);
 router.post("/signup", validateUserBody, createUser);
 
-// Items: GET is public, others protected (handled inside clothingItemRouter)
+// Items:
+// - GET /items is public (handled in clothingItemRouter)
+// - everything else under /items is protected (also handled in clothingItemRouter)
 router.use("/items", clothingItemRouter);
 
 // Everything else protected
